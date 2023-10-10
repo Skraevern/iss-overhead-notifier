@@ -1,7 +1,7 @@
 import requests
 import datetime
 import time
-import smtplib
+import os
 
 API_SUN = "https://api.sunrise-sunset.org/json"
 API_ISS = "http://api.open-notify.org/iss-now.json"
@@ -42,27 +42,33 @@ def is_dark():
     sunset_hour = int(sun_data["results"]["sunset"].split("T")[1].split(":")[0])
     sunrise_hour = int(sun_data["results"]["sunrise"].split("T")[1].split(":")[0])
     now = datetime.datetime.now()
-    if now.hour > sunset_hour or now.hour < sunrise_hour:  # Between sunset and sunrise
+
+    print(now.hour >= sunset_hour or now.hour <= sunrise_hour)
+    if (
+        now.hour >= sunset_hour or now.hour <= sunrise_hour
+    ):  # Between sunset and sunrise
         return True
 
 
-def send_mail():
-    gmail = "kristian.skreosen.test@gmail.com"  # smtp.gmail.com
-    gmail_password = "qgow znse zjbi cjpz"  # app password
+def send_telegram():
     iss_pos = iss_lat_long()
-    with smtplib.SMTP("smtp.gmail.com", port=587) as connection:
-        connection.starttls()
-        connection.login(user=gmail, password=gmail_password)
-        connection.sendmail(
-            from_addr=gmail,
-            to_addrs=gmail,
-            msg=f'Subject:ISS overhead!\n\nLook up! ISS is at latitude: "{iss_pos["lat"]}" and longitude: "{iss_pos["lng"]}"',
-        )
+
+    TOKEN = os.environ.get("TELEGRAM_TOKEN")
+    url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+    # print(requests.get(url).json()) # to get chat_id
+
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    message = (
+        f'Look up! ISS is at latitude: "{iss_pos["lat"]}", longitude: "{iss_pos["lng"]}'
+        f'\nSiljan is lat: "{SILJAN_LAT}", long"{SILJAN_LNG}"'
+    )
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
+    print(requests.get(url).json())  # this sends the message
 
 
 while True:
     if is_dark():
         if is_iss_overhead():
-            send_mail()
+            send_telegram()
 
     time.sleep(60)
